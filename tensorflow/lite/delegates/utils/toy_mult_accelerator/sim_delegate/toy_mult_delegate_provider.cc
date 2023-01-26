@@ -1,7 +1,7 @@
 #include <string>
 #include <utility>
 
-#include "tensorflow/lite/delegates/utils/toy_accelerator/sim_delegate/toy_delegate.h"
+#include "tensorflow/lite/delegates/utils/toy_accelerator/sim_delegate/toy_mult_delegate.h"
 #include "tensorflow/lite/tools/delegates/delegate_provider.h"
 
 namespace tflite {

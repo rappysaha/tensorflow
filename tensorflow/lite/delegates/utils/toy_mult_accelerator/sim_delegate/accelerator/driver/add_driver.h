@@ -3,7 +3,7 @@
 
 #include "acc_container.h"
 #include "tensorflow/lite/delegates/utils/secda_tflite/threading_utils/utils.h"
-namespace tflite_toysim {
+namespace tflite_toymultsim {
 
 void BlockAdd(acc_container& drv) {
   int i_len = 0;

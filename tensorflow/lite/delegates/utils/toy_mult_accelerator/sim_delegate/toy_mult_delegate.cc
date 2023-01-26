@@ -5,7 +5,7 @@
 #include <utility>
 
 #include "accelerator/driver/add_driver.h"
-#include "tensorflow/lite/delegates/utils/toy_accelerator/sim_delegate/toy_delegate.h"
+#include "tensorflow/lite/delegates/utils/toy_accelerator/sim_delegate/toy_mult_delegate.h"
 #include "tensorflow/lite/delegates/utils/toy_accelerator/sim_delegate/util.h"
 #include "tensorflow/lite/delegates/utils/simple_delegate.h"
 #include "tensorflow/lite/kernels/internal/quantization_util.h"
@@ -24,12 +24,12 @@ struct sysC_sigs* scs;
 struct Profile* profile;
 
 namespace tflite {
-namespace toy_test {
+namespace toy_mult_test {
 
-// ToyAdd delegate kernel.
-class ToyDelegateKernel : public SimpleDelegateKernelInterface {
+// Toymult delegate kernel.
+class ToyMultDelegateKernel : public SimpleDelegateKernelInterface {
  public:
-  explicit ToyDelegateKernel(const ToyDelegateOptions& options)
+  explicit ToyMultDelegateKernel(const ToyMultDelegateOptions& options)
       : options_(options) {}
 
   // Runs once per delegate partition
@@ -39,7 +39,7 @@ class ToyDelegateKernel : public SimpleDelegateKernelInterface {
     if (!dparams.init) {
       static ACCNAME accelerator("accelerator");
       static struct stream_dma _sdma(0, 0, 8096, 0, 8096);
-      static struct sysC_sigs _scs(1);
+      static struct sysC_sigs _scs(1); // here 1 means nothing
       static struct Profile _profile;
       sysC_init();
       systemC_binder(&accelerator, &_sdma, &_scs);
@@ -74,8 +74,8 @@ class ToyDelegateKernel : public SimpleDelegateKernelInterface {
       outputs_[i].push_back(delegated_node->outputs->data[0]);
       builtin_code_[i] = delegated_node_registration->builtin_code;
       associated_nodes.push_back(node_index);
-      TfLiteAddParams* cparam =
-          reinterpret_cast<TfLiteAddParams*>(delegated_node->builtin_data);
+      TfLiteMulParams* cparam =
+          reinterpret_cast<TfLiteMulParams*>(delegated_node->builtin_data);
       OpData* opdata = reinterpret_cast<OpData*>(delegated_node->user_data);
       cparams[i] = cparam;
       opdatas[i] = opdata;
@@ -90,9 +90,9 @@ class ToyDelegateKernel : public SimpleDelegateKernelInterface {
   // Nodes
   TfLiteStatus Prepare(TfLiteContext* context, TfLiteNode* node) override {
     int node_count = inputs_.size();
-    int out_tid = 0;
+    // int out_tid = 0; // no need of this variable
     for (int i = 0; i < node_count; i++) {
-      TfLiteAddParams* params = cparams[i];
+      TfLiteMulParams* params = cparams[i];
       OpData* data = opdatas[i];
 
       const TfLiteTensor* input1;
@@ -103,42 +103,54 @@ class ToyDelegateKernel : public SimpleDelegateKernelInterface {
       GetInputSafe(context, inputs_[i][1], &input2);
       GetOutputSafe(context, outputs_[i][0], &output);
 
-      output->type = input2->type;
-      TfLiteIntArray* output_size = TfLiteIntArrayCopy(input1->dims);
+      // output->type = input2->type;
+      
       const bool requires_broadcast = false;
-      bool general_scale_int16 = false;
-      bool input1_scale_is_pot = false;
-      bool input2_scale_is_pot = false;
-      bool output_scale_is_pot = false;
-      int input1_scale_log2_rounded{0};
-      int input2_scale_log2_rounded{0};
-      int output_scale_log2_rounded{0};
-      data->pot_scale_int16 = !general_scale_int16;
-      data->input1_offset = -input1->params.zero_point;
-      data->input2_offset = -input2->params.zero_point;
-      data->output_offset = output->params.zero_point;
-      data->left_shift = general_scale_int16 ? 15 : 20;
-      const double twice_max_input_scale =
-          2 * std::max(input1->params.scale, input2->params.scale);
-      const double real_input1_multiplier =
-          input1->params.scale / twice_max_input_scale;
-      const double real_input2_multiplier =
-          input2->params.scale / twice_max_input_scale;
-      const double real_output_multiplier =
-          twice_max_input_scale /
-          ((1 << data->left_shift) * output->params.scale);
-      QuantizeMultiplierSmallerThanOneExp(real_input1_multiplier,
-                                          &data->input1_multiplier,
-                                          &data->input1_shift);
-      QuantizeMultiplierSmallerThanOneExp(real_input2_multiplier,
-                                          &data->input2_multiplier,
-                                          &data->input2_shift);
-      QuantizeMultiplierSmallerThanOneExp(real_output_multiplier,
-                                          &data->output_multiplier,
-                                          &data->output_shift);
-      CalculateActivationRangeQuantized(context, params->activation, output,
-                                        &data->output_activation_min,
-                                        &data->output_activation_max);
+      TfLiteIntArray* output_size = TfLiteIntArrayCopy(input1->dims);
+      
+      CalculateActivationRangeQuantized(
+        context, params->activation, output, &data->output_activation_min,
+        &data->output_activation_max);
+
+      double real_multiplier =
+        input1->params.scale * input2->params.scale / output->params.scale;
+
+      QuantizeMultiplier(real_multiplier, &data->output_multiplier,
+                       &data->output_shift);
+
+      // bool general_scale_int16 = false;
+      // bool input1_scale_is_pot = false;
+      // bool input2_scale_is_pot = false;
+      // bool output_scale_is_pot = false;
+      // int input1_scale_log2_rounded{0};
+      // int input2_scale_log2_rounded{0};
+      // int output_scale_log2_rounded{0};
+      // data->pot_scale_int16 = !general_scale_int16;
+      // data->input1_offset = -input1->params.zero_point;
+      // data->input2_offset = -input2->params.zero_point;
+      // data->output_offset = output->params.zero_point;
+      // data->left_shift = general_scale_int16 ? 15 : 20;
+      // const double twice_max_input_scale =
+      //     2 * std::max(input1->params.scale, input2->params.scale);
+      // const double real_input1_multiplier =
+      //     input1->params.scale / twice_max_input_scale;
+      // const double real_input2_multiplier =
+      //     input2->params.scale / twice_max_input_scale;
+      // const double real_output_multiplier =
+      //     twice_max_input_scale /
+      //     ((1 << data->left_shift) * output->params.scale);
+      // QuantizeMultiplierSmallerThanOneExp(real_input1_multiplier,
+      //                                     &data->input1_multiplier,
+      //                                     &data->input1_shift);
+      // QuantizeMultiplierSmallerThanOneExp(real_input2_multiplier,
+      //                                     &data->input2_multiplier,
+      //                                     &data->input2_shift);
+      // QuantizeMultiplierSmallerThanOneExp(real_output_multiplier,
+      //                                     &data->output_multiplier,
+      //                                     &data->output_shift);
+      // CalculateActivationRangeQuantized(context, params->activation, output,
+      //                                   &data->output_activation_min,
+      //                                   &data->output_activation_max);
 
       context->ResizeTensor(context, output, output_size);
     }
@@ -165,14 +177,14 @@ class ToyDelegateKernel : public SimpleDelegateKernelInterface {
       GetOutputSafe(context, outputs_[i][0], &output);
 
       tflite::ArithmeticParams op_params;
-      op_params.left_shift = data->left_shift;
-      op_params.input1_offset = data->input1_offset;
-      op_params.input1_multiplier = data->input1_multiplier;
-      op_params.input1_shift = data->input1_shift;
-      op_params.input2_offset = data->input2_offset;
-      op_params.input2_multiplier = data->input2_multiplier;
-      op_params.input2_shift = data->input2_shift;
-      op_params.output_offset = data->output_offset;
+      // op_params.left_shift = data->left_shift;
+      // op_params.input1_offset = data->input1_offset;
+      // op_params.input1_multiplier = data->input1_multiplier;
+      // op_params.input1_shift = data->input1_shift;
+      // op_params.input2_offset = data->input2_offset;
+      // op_params.input2_multiplier = data->input2_multiplier;
+      // op_params.input2_shift = data->input2_shift;
+      // op_params.output_offset = data->output_offset;
       op_params.output_multiplier = data->output_multiplier;
       op_params.output_shift = data->output_shift;
       SetActivationParams(data->output_activation_min,
@@ -193,27 +205,27 @@ class ToyDelegateKernel : public SimpleDelegateKernelInterface {
       drv.input_A = input1_data;
       drv.input_B = input2_data;
       drv.output_C = output_data;
-      drv.length = roundDown(size, 4);
-      drv.lshift = op_params.left_shift;
-      drv.in1_off = op_params.input1_offset;
-      drv.in1_sv = op_params.input1_shift;
-      drv.in1_mul = op_params.input1_multiplier;
-      drv.in2_off = op_params.input2_offset;
-      drv.in2_sv = op_params.input2_shift;
-      drv.in2_mul = op_params.input2_multiplier;
-      drv.out1_off = op_params.output_offset;
-      drv.out1_sv = op_params.output_shift;
+      // drv.length = roundDown(size, 4); // what this length actually mean
+      // drv.lshift = op_params.left_shift; // why do we need leftshift?
+      // drv.in1_off = op_params.input1_offset;
+      // drv.in1_sv = op_params.input1_shift;
+      // drv.in1_mul = op_params.input1_multiplier;
+      // drv.in2_off = op_params.input2_offset;
+      // drv.in2_sv = op_params.input2_shift;
+      // drv.in2_mul = op_params.input2_multiplier;
+      // drv.out1_off = op_params.output_offset;
+      // drv.out1_sv = op_params.output_shift;
       drv.out1_mul = op_params.output_multiplier;
       drv.qa_max = op_params.quantized_activation_max;
       drv.qa_min = op_params.quantized_activation_min;
 
-      tflite_toysim::Entry(drv);
+      tflite_toymultsim::Entry(drv);
       dparams.layer++;
       dparams.delegated_nodes--;
     }
 
     if (dparams.delegated_nodes == 0) {
-      profile->saveCSVRecords("toyadd_sim");
+      profile->saveCSVRecords("toymult_sim");
     }
     return kTfLiteOk;
   }
@@ -231,23 +243,23 @@ class ToyDelegateKernel : public SimpleDelegateKernelInterface {
   std::vector<int8_t*> crx;
 
   std::vector<OpData*> opdatas;
-  std::vector<TfLiteAddParams*> cparams;
+  std::vector<TfLiteMulParams*> cparams;
 
  private:
-  const ToyDelegateOptions options_;
+  const ToyMultDelegateOptions options_;
 };
 
-// ToyDelegate implements the interface of SimpleDelegateInterface.
+// ToyMultDelegate implements the interface of SimpleDelegateInterface.
 // This holds the Delegate capabilities.
-class ToyDelegate : public SimpleDelegateInterface {
+class ToyMultDelegate : public SimpleDelegateInterface {
  public:
-  explicit ToyDelegate(const ToyDelegateOptions& options) : options_(options) {}
+  explicit ToyMultDelegate(const ToyMultDelegateOptions& options) : options_(options) {}
 
   bool IsNodeSupportedByDelegate(const TfLiteRegistration* registration,
                                  const TfLiteNode* node,
                                  TfLiteContext* context) const override {
     // Only supports FC ops
-    if (kTfLiteBuiltinAdd != registration->builtin_code) return false;
+    if (kTfLiteBuiltinMul != registration->builtin_code) return false;
 
     if (node->inputs->size != 2) return false;
 
@@ -262,7 +274,7 @@ class ToyDelegate : public SimpleDelegateInterface {
 
     if (!TfLiteIntArrayEqual(input1.dims, input2.dims)) return false;
 
-    // ADD
+    // Multiplication
     // cout << dparams.delegated_nodes << endl;
     dparams.delegated_nodes++;
     return true;
@@ -271,13 +283,13 @@ class ToyDelegate : public SimpleDelegateInterface {
   TfLiteStatus Initialize(TfLiteContext* context) override { return kTfLiteOk; }
 
   const char* Name() const override {
-    static constexpr char kName[] = "ToyDelegate";
+    static constexpr char kName[] = "ToyMultDelegate";
     return kName;
   }
 
   std::unique_ptr<SimpleDelegateKernelInterface> CreateDelegateKernelInterface()
       override {
-    return std::make_unique<ToyDelegateKernel>(options_);
+    return std::make_unique<ToyMultDelegateKernel>(options_);
   }
 
   SimpleDelegateInterface::Options DelegateOptions() const override {
@@ -286,31 +298,31 @@ class ToyDelegate : public SimpleDelegateInterface {
   }
 
  private:
-  const ToyDelegateOptions options_;
+  const ToyMultDelegateOptions options_;
 };
 
-}  // namespace toy_test
+}  // namespace toy_mult_test
 }  // namespace tflite
 
-ToyDelegateOptions TfLiteToyDelegateOptionsDefault() {
-  ToyDelegateOptions options = {0};
-  // Just assign an invalid builtin code so that this toy test delegate will
+ToyMultDelegateOptions TfLiteToyMultDelegateOptionsDefault() {
+  ToyMultDelegateOptions options = {0};
+  // Just assign an invalid builtin code so that this toymult test delegate will
   // not support any node by default.
   options.allowed_builtin_code = -1;
   return options;
 }
 
 // Creates a new delegate instance that need to be destroyed with
-// `TfLiteToyDelegateDelete` when delegate is no longer used by TFLite.
+// `TfLiteToyMultDelegateDelete` when delegate is no longer used by TFLite.
 // When `options` is set to `nullptr`, the above default values are used:
-TfLiteDelegate* TfLiteToyDelegateCreate(const ToyDelegateOptions* options) {
-  std::unique_ptr<tflite::toy_test::ToyDelegate> toy(
-      new tflite::toy_test::ToyDelegate(
-          options ? *options : TfLiteToyDelegateOptionsDefault()));
-  return tflite::TfLiteDelegateFactory::CreateSimpleDelegate(std::move(toy));
+TfLiteDelegate* TfLiteToyMultDelegateCreate(const ToyMultDelegateOptions* options) {
+  std::unique_ptr<tflite::toy_mult_test::ToyMultDelegate> toymult(
+      new tflite::toy_mult_test::ToyMultDelegate(
+          options ? *options : TfLiteToyMultDelegateOptionsDefault()));
+  return tflite::TfLiteDelegateFactory::CreateSimpleDelegate(std::move(toymult));
 }
 
-// Destroys a delegate created with `TfLiteToyDelegateCreate` call.
-void TfLiteToyDelegateDelete(TfLiteDelegate* delegate) {
+// Destroys a delegate created with `TfLiteToyMultDelegateCreate` call.
+void TfLiteToyMultDelegateDelete(TfLiteDelegate* delegate) {
   tflite::TfLiteDelegateFactory::DeleteSimpleDelegate(delegate);
 }

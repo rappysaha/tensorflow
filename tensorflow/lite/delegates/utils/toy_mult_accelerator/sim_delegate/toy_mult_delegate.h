@@ -1,5 +1,5 @@
-#ifndef TENSORFLOW_LITE_DELEGATES_UTILS_TOY_DELEGATE_TOY_DELEGATE_H_
-#define TENSORFLOW_LITE_DELEGATES_UTILS_TOY_DELEGATE_TOY_DELEGATE_H_
+#ifndef TENSORFLOW_LITE_DELEGATES_UTILS_TOY_MULT_DELEGATE_TOY_MULT_DELEGATE_H_
+#define TENSORFLOW_LITE_DELEGATES_UTILS_TOY_MULT_DELEGATE_TOY_MULT_DELEGATE_H_
 
 #include <memory>
 
@@ -18,18 +18,18 @@ typedef struct {
   bool error_during_prepare;
   // Report error during invoke.
   bool error_during_invoke;
-} ToyDelegateOptions;
+} ToyMultDelegateOptions;
 
 // Returns a structure with the default delegate options.
-ToyDelegateOptions TfLiteToyDelegateOptionsDefault();
+ToyMultDelegateOptions TfLiteToyMultDelegateOptionsDefault();
 
 // Creates a new delegate instance that needs to be destroyed with
-// `TfLiteToyDelegateDelete` when delegate is no longer used by TFLite.
+// `TfLiteToyMultDelegateDelete` when delegate is no longer used by TFLite.
 // When `options` is set to `nullptr`, the above default values are used:
-TfLiteDelegate* TfLiteToyDelegateCreate(const ToyDelegateOptions* options);
+TfLiteDelegate* TfLiteToyMultDelegateCreate(const ToyMultDelegateOptions* options);
 
-// Destroys a delegate created with `TfLiteToyDelegateCreate` call.
-void TfLiteToyDelegateDelete(TfLiteDelegate* delegate);
+// Destroys a delegate created with `TfLiteToyMultDelegateCreate` call.
+void TfLiteToyMultDelegateDelete(TfLiteDelegate* delegate);
 #ifdef __cplusplus
 }
 #endif  // __cplusplus
@@ -37,9 +37,9 @@ void TfLiteToyDelegateDelete(TfLiteDelegate* delegate);
 // A convenient wrapper that returns C++ std::unique_ptr for automatic memory
 // management.
 inline std::unique_ptr<TfLiteDelegate, void (*)(TfLiteDelegate*)>
-TfLiteToyDelegateCreateUnique(const ToyDelegateOptions* options) {
+TfLiteToyMultDelegateCreateUnique(const ToyMultDelegateOptions* options) {
   return std::unique_ptr<TfLiteDelegate, void (*)(TfLiteDelegate*)>(
-      TfLiteToyDelegateCreate(options), TfLiteToyDelegateDelete);
+      TfLiteToyMultDelegateCreate(options), TfLiteToyMultDelegateDelete);
 }
 
-#endif  // TENSORFLOW_LITE_DELEGATES_UTILS_TOY_DELEGATE_TOY_DELEGATE_H_
+#endif  // TENSORFLOW_LITE_DELEGATES_UTILS_TOY_MULT_DELEGATE_TOY_MULT_DELEGATE_H_
