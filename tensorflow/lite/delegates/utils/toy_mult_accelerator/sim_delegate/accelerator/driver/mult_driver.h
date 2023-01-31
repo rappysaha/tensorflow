@@ -1,11 +1,11 @@
-#ifndef ADD_DRIVER
-#define ADD_DRIVER
+#ifndef MULT_DRIVER
+#define MULT_DRIVER
 
 #include "acc_container.h"
 #include "tensorflow/lite/delegates/utils/secda_tflite/threading_utils/utils.h"
 namespace tflite_toymultsim {
 
-void BlockAdd(acc_container& drv) {
+void BlockMult(acc_container& drv) {
   int i_len = 0;
   int* DMA_input_buffer = drv.sdma->dma_get_inbuffer();
   DMA_input_buffer[i_len++] = drv.length / 4;
@@ -53,15 +53,15 @@ void BlockAdd(acc_container& drv) {
 
 void Entry(acc_container& drv) {
 #ifdef DELEGATE_VERBOSE
-  cout << "ToyAdd" << endl;
+  cout << "ToyMult" << endl;
   cout << "===========================" << endl;
   cout << "Pre-ACC Info" << endl;
-  cout << "ADD Layer: " << drv.layer << endl;
+  cout << "MULT Layer: " << drv.layer << endl;
   cout << "Input Length: " << drv.length << endl;
   cout << "===========================" << endl;
 #endif
-  BlockAdd(drv);
+  BlockMult(drv);
 }
 
 }  // namespace tflite_secda
-#endif // ADD_DRIVER
+#endif // MULT_DRIVER

@@ -2,24 +2,24 @@
 #include <vector>
 
 #include "tensorflow/lite/c/common.h"
-#include "tensorflow/lite/delegates/utils/toy_accelerator/sim_delegate/toy_delegate.h"
+#include "tensorflow/lite/delegates/utils/toy_mult_accelerator/sim_delegate/toy_mult_delegate.h"
 #include "tensorflow/lite/tools/command_line_flags.h"
 #include "tensorflow/lite/tools/logging.h"
 
 namespace tflite {
 namespace tools {
 
-TfLiteDelegate* CreateToyDelegateFromOptions(char** options_keys,
+TfLiteDelegate* CreateToyMultDelegateFromOptions(char** options_keys,
                                                char** options_values,
                                                size_t num_options) {
-  ToyDelegateOptions options = TfLiteToyDelegateOptionsDefault();
+  ToyMultDelegateOptions options = TfLiteToyMultDelegateOptionsDefault();
 
   // Parse key-values options to ToyDelegateOptions by mimicking them as
   // command-line flags.
   std::vector<const char*> argv;
   argv.reserve(num_options + 1);
-  constexpr char kToyDelegateParsing[] = "toy_delegate_parsing";
-  argv.push_back(kToyDelegateParsing);
+  constexpr char kToyMultDelegateParsing[] = "toy_mult_delegate_parsing";
+  argv.push_back(kToyMultDelegateParsing);
 
   std::vector<std::string> option_args;
   option_args.reserve(num_options);
@@ -64,7 +64,7 @@ TfLiteDelegate* CreateToyDelegateFromOptions(char** options_keys,
   TFLITE_LOG(INFO) << "Bert delegate: error_during_invoke set to "
                    << options.error_during_invoke << ".";
 
-  return TfLiteToyDelegateCreate(&options);
+  return TfLiteToyMultDelegateCreate(&options);
 }
 
 }  // namespace tools
@@ -77,12 +77,12 @@ extern "C" {
 TFL_CAPI_EXPORT TfLiteDelegate* tflite_plugin_create_delegate(
     char** options_keys, char** options_values, size_t num_options,
     void (*report_error)(const char*)) {
-  return tflite::tools::CreateToyDelegateFromOptions(
+  return tflite::tools::CreateToyMultDelegateFromOptions(
       options_keys, options_values, num_options);
 }
 
 TFL_CAPI_EXPORT void tflite_plugin_destroy_delegate(TfLiteDelegate* delegate) {
-  TfLiteToyDelegateDelete(delegate);
+  TfLiteToyMultDelegateDelete(delegate);
 }
 
 }  // extern "C"

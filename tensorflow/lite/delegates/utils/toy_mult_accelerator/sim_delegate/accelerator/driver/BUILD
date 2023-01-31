@@ -14,16 +14,16 @@ common_copts = ["-Wall"] + tflite_copts()
 
 
 cc_library(
-    name = "toy_driver",
+    name = "toy_mult_driver",
     srcs = [
         "systemc_binding.h",
         "acc_container.h",
-        "add_driver.h",
+        "mult_driver.h",
         ],
     copts = common_copts,
     deps = [
         "@systemc//:systemc",
-        "//tensorflow/lite/delegates/utils/toy_accelerator/sim_delegate/accelerator:toy_accelerator",
+        "//tensorflow/lite/delegates/utils/toy_mult_accelerator/sim_delegate/accelerator:toy_mult_accelerator",
         "//tensorflow/lite/delegates/utils/secda_tflite:secda_tflite_sim",
     ],
 )

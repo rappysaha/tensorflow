@@ -12,7 +12,7 @@ package(
 common_copts = ["-Wall"] + tflite_copts()
 
 cc_library(
-    name = "toy_accelerator",
+    name = "toy_mult_accelerator",
     srcs = [
         "acc.sc.cc",
         "acc.sc.h",

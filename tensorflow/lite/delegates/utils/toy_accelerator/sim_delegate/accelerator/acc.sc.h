@@ -5,6 +5,8 @@
 #include "tensorflow/lite/delegates/utils/secda_tflite/sysc_profiler/profiler.h"
 #include "tensorflow/lite/delegates/utils/secda_tflite/sysc_integrator/sysc_types.h"
 
+#define DebugPrint
+
 #ifndef __SYNTHESIS__
 #define DWAIT(x) wait(x)
 #else

@@ -11,7 +11,7 @@
 #define DWAIT(x)
 #endif
 
-#define ACCNAME TOY_ADD
+#define ACCNAME TOY_MULT
 #define ACC_DTYPE sc_int
 #define ACC_C_DTYPE int
 #define STOPPER -1
@@ -72,6 +72,8 @@ SC_MODULE(ACCNAME) {
   int Quantised_Multiplier(int, int, int);
 
   ACC_DTYPE<32> Clamp_Combine(int, int, int, int, int, int);
+
+  ACC_DTYPE<32> Clamp_Mul_Combine(int i1, int qa_max, int qa_min);
 
   SC_HAS_PROCESS(ACCNAME);
 

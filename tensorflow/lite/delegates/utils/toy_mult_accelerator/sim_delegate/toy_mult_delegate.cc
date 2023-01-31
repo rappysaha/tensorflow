@@ -4,9 +4,9 @@
 #include <iostream>
 #include <utility>
 
-#include "accelerator/driver/add_driver.h"
-#include "tensorflow/lite/delegates/utils/toy_accelerator/sim_delegate/toy_mult_delegate.h"
-#include "tensorflow/lite/delegates/utils/toy_accelerator/sim_delegate/util.h"
+#include "accelerator/driver/mult_driver.h"
+#include "tensorflow/lite/delegates/utils/toy_mult_accelerator/sim_delegate/toy_mult_delegate.h"
+#include "tensorflow/lite/delegates/utils/toy_mult_accelerator/sim_delegate/util.h"
 #include "tensorflow/lite/delegates/utils/simple_delegate.h"
 #include "tensorflow/lite/kernels/internal/quantization_util.h"
 #include "tensorflow/lite/kernels/kernel_util.h"
@@ -177,14 +177,14 @@ class ToyMultDelegateKernel : public SimpleDelegateKernelInterface {
       GetOutputSafe(context, outputs_[i][0], &output);
 
       tflite::ArithmeticParams op_params;
-      // op_params.left_shift = data->left_shift;
-      // op_params.input1_offset = data->input1_offset;
-      // op_params.input1_multiplier = data->input1_multiplier;
-      // op_params.input1_shift = data->input1_shift;
-      // op_params.input2_offset = data->input2_offset;
-      // op_params.input2_multiplier = data->input2_multiplier;
-      // op_params.input2_shift = data->input2_shift;
-      // op_params.output_offset = data->output_offset;
+      op_params.left_shift = data->left_shift;
+      op_params.input1_offset = data->input1_offset;
+      op_params.input1_multiplier = data->input1_multiplier;
+      op_params.input1_shift = data->input1_shift;
+      op_params.input2_offset = data->input2_offset;
+      op_params.input2_multiplier = data->input2_multiplier;
+      op_params.input2_shift = data->input2_shift;
+      op_params.output_offset = data->output_offset;
       op_params.output_multiplier = data->output_multiplier;
       op_params.output_shift = data->output_shift;
       SetActivationParams(data->output_activation_min,
@@ -205,21 +205,26 @@ class ToyMultDelegateKernel : public SimpleDelegateKernelInterface {
       drv.input_A = input1_data;
       drv.input_B = input2_data;
       drv.output_C = output_data;
-      // drv.length = roundDown(size, 4); // what this length actually mean
-      // drv.lshift = op_params.left_shift; // why do we need leftshift?
-      // drv.in1_off = op_params.input1_offset;
-      // drv.in1_sv = op_params.input1_shift;
-      // drv.in1_mul = op_params.input1_multiplier;
-      // drv.in2_off = op_params.input2_offset;
-      // drv.in2_sv = op_params.input2_shift;
-      // drv.in2_mul = op_params.input2_multiplier;
-      // drv.out1_off = op_params.output_offset;
-      // drv.out1_sv = op_params.output_shift;
+      drv.length = roundDown(size, 4); // what this length actually mean
+      drv.lshift = op_params.left_shift; // why do we need leftshift?
+      drv.in1_off = op_params.input1_offset;
+      drv.in1_sv = op_params.input1_shift;
+      drv.in1_mul = op_params.input1_multiplier;
+      drv.in2_off = op_params.input2_offset;
+      drv.in2_sv = op_params.input2_shift;
+      drv.in2_mul = op_params.input2_multiplier;
+      drv.out1_off = op_params.output_offset;
+      drv.out1_sv = op_params.output_shift;
       drv.out1_mul = op_params.output_multiplier;
       drv.qa_max = op_params.quantized_activation_max;
       drv.qa_min = op_params.quantized_activation_min;
 
       tflite_toymultsim::Entry(drv);
+      cout << "==========output result===========" << endl;
+      cout << "drv.output_C[0]= " << output_data[0] << endl;
+      cout << "drv.output_C[1]= " << output_data[1] << endl;
+      cout << "drv.output_C[2]= " << output_data[2] << endl;
+      cout << "drv.output_C[3]= " << output_data[3] << endl;
       dparams.layer++;
       dparams.delegated_nodes--;
     }

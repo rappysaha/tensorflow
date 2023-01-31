@@ -31,6 +31,19 @@ int ACCNAME::Quantised_Multiplier(int x, int qm, int shift) {
   return result_32;
 }
 
+ACC_DTYPE<32> ACCNAME::Clamp_Mul_Combine(int i1, int qa_max, int qa_min) {
+  if (i1 < qa_min) i1 = qa_min;
+  if (i1 > qa_max) i1 = qa_max;
+
+  ACC_DTYPE<32> d;
+  d.range(7, 0) = i1;
+  d.range(15, 8) = 255;
+  d.range(23, 16) = 255;
+  d.range(31, 24) = 255;
+
+  return d;
+}
+
 ACC_DTYPE<32> ACCNAME::Clamp_Combine(int i1, int i2, int i3, int i4, int qa_max,
                                      int qa_min) {
   if (i1 < qa_min) i1 = qa_min;
@@ -60,6 +73,80 @@ void ACCNAME::Counter() {
     wait();
   }
 }
+
+void ACCNAME::Compute() {
+  ACC_DTYPE<32> i1;
+  ACC_DTYPE<32> i2;
+  ACC_DTYPE<8> i1mem[4];
+  ACC_DTYPE<8> i2mem[4];
+  int length;
+  int mul[4];
+  DATA d;
+
+  computeS.write(0);
+  wait();
+  while (1) {
+    computeS.write(0); // what does this write do
+    DWAIT();
+
+    length = din1.read().data;
+    computeS.write(1);
+    DWAIT();
+    lshift = (1 << din1.read().data);
+
+    in1_off = din1.read().data;
+    in1_sv = din1.read().data;
+    in1_mul = din1.read().data;
+
+    in2_off = din1.read().data;
+    in2_sv = din1.read().data;
+    in2_mul = din1.read().data;
+
+    out1_off = din1.read().data;
+    out1_sv = din1.read().data;
+    out1_mul = din1.read().data;
+
+    qa_max = din1.read().data;
+    qa_min = din1.read().data;
+
+    for (int i = 0; i < length; i++) {
+      i1 = din1.read().data;
+      i2 = din1.read().data;
+
+      i1mem[0] = i1.range(7, 0);
+      i1mem[1] = i1.range(15, 8);
+      i1mem[2] = i1.range(23, 16);
+      i1mem[3] = i1.range(31, 24);
+
+      i2mem[0] = i2.range(7, 0);
+      i2mem[1] = i2.range(15, 8);
+      i2mem[2] = i2.range(23, 16);
+      i2mem[3] = i2.range(31, 24);
+
+      cout<< "i1mem[0]= " << i1mem[0] << "i1mem[1]= " << i1mem[1] << "i1mem[2]= " << i1mem[2] << "i1mem[3]= " << i1mem[3] << endl; 
+      cout<< "i2mem[0]= " << i2mem[0] << "i2mem[1]= " << i2mem[1] << "i2mem[2]= " << i2mem[2] << "i2mem[3]= " << i2mem[3] << endl; 
+
+      mul[0] = i1mem[0]*i2mem[0] +i1mem[1]*i2mem[2];
+      mul[1] = i1mem[0]*i2mem[1] +i1mem[1]*i2mem[3];
+      mul[2] = i1mem[2]*i2mem[0] +i1mem[3]*i2mem[2];
+      mul[3] = i1mem[2]*i2mem[1] +i1mem[3]*i2mem[3];
+
+      d.data = Clamp_Combine(mul[0], mul[1], mul[2], mul[3], qa_max, qa_min);
+
+      cout << "d.data= " << d.data << endl;
+      
+      if (i+1 == length)  
+        d.tlast = true;
+      else
+        d.tlast = false;
+      
+      dout1.write(d);
+    }
+    DWAIT();
+  }
+}
+
+#if 0
 
 void ACCNAME::Compute() {
   ACC_DTYPE<32> i1;
@@ -160,3 +247,4 @@ void ACCNAME::Compute() {
     DWAIT();
   }
 }
+#endif

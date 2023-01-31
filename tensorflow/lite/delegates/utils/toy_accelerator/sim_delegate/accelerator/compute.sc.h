@@ -101,6 +101,16 @@ void ACCNAME::Compute() {
     qa_max = din1.read().data;
     qa_min = din1.read().data;
 
+#ifdef DebugPrint
+cout << "========Test debug print========" << endl;
+cout << "length= " << length << " lshift= " << lshift << endl;
+cout << "in1_off= " << in1_off << " in1_sv= " << in1_sv << " in1_mul= " << in1_mul << endl;
+cout << "in2_off= " << in2_off << " in2_sv= " << in2_sv << " in2_mul= " << in2_mul << endl;
+cout << "out1_off= " << out1_off << " out1_sv= " << out1_sv << " out1_mul= " << out1_mul << endl;
+
+#endif // !DebugPrint
+
+
     for (int i = 0; i < length; i++) {
       i1 = din1.read().data;
       i2 = din1.read().data;
@@ -149,6 +159,21 @@ void ACCNAME::Compute() {
 
       d.data =
           Clamp_Combine(f_out[0], f_out[1], f_out[2], f_out[3], qa_max, qa_min);
+#ifdef DebugPrint
+      cout << "===== For Length[" << i << "]=====" << endl;
+      cout << "i1 =" << i1 << " i2=" << i2 << endl;
+      cout << "i1mem[0] =" << i1mem[0] << " i1mem[1]=" << i1mem[1] << " i1mem[2]=" << i1mem[2] << " i1mem[3]=" << i1mem[3] << endl;
+      cout << "i2mem[0] =" << i2mem[0] << " i2mem[1]=" << i2mem[1] << " i2mem[2]=" << i2mem[2] << " i2mem[3]=" << i2mem[3] << endl;
+
+      cout << "s_in1[0] =" << s_in1[0] << " s_in1[1]=" << s_in1[1] << " s_in1[2]=" << s_in1[2] << " s_in1[3]=" << s_in1[3] << endl;
+      cout << "s_in2[0] =" << s_in2[0] << " s_in2[1]=" << s_in2[1] << " s_in2[2]=" << s_in2[2] << " s_in2[3]=" << s_in2[3] << endl;
+
+      cout << "sum[0] =" << sum[0] << " sum[1]=" << sum[1] << " sum[2]=" << sum[2] << " sum[3]=" << sum[3] << endl;
+      cout << "f_out[0] =" << f_out[0] << " f_out[1]=" << f_out[1] << " f_out[2]=" << f_out[2] << " f_out[3]=" << f_out[3] << endl;
+
+      cout << "d.data= " << d.data << endl;
+
+#endif // DebugPrint
 
       if (i + 1 == length)
         d.tlast = true;
