@@ -80,7 +80,10 @@ void ACCNAME::Compute() {
   ACC_DTYPE<8> i1mem[4];
   ACC_DTYPE<8> i2mem[4];
   int length;
+  int i1Wof[4];
+  int i2Wof[4];
   int mul[4];
+  int f_out[4];
   DATA d;
 
   computeS.write(0);
@@ -92,15 +95,15 @@ void ACCNAME::Compute() {
     length = din1.read().data;
     computeS.write(1);
     DWAIT();
-    lshift = (1 << din1.read().data);
+    // lshift = (1 << din1.read().data);
 
     in1_off = din1.read().data;
-    in1_sv = din1.read().data;
-    in1_mul = din1.read().data;
+    // in1_sv = din1.read().data;
+    // in1_mul = din1.read().data;
 
     in2_off = din1.read().data;
-    in2_sv = din1.read().data;
-    in2_mul = din1.read().data;
+    // in2_sv = din1.read().data;
+    // in2_mul = din1.read().data;
 
     out1_off = din1.read().data;
     out1_sv = din1.read().data;
@@ -125,13 +128,29 @@ void ACCNAME::Compute() {
 
       cout<< "i1mem[0]= " << i1mem[0] << "i1mem[1]= " << i1mem[1] << "i1mem[2]= " << i1mem[2] << "i1mem[3]= " << i1mem[3] << endl; 
       cout<< "i2mem[0]= " << i2mem[0] << "i2mem[1]= " << i2mem[1] << "i2mem[2]= " << i2mem[2] << "i2mem[3]= " << i2mem[3] << endl; 
+      
+      i1Wof[0] = in1_off + i1mem[0];
+      i1Wof[1] = in1_off + i1mem[1];
+      i1Wof[2] = in1_off + i1mem[2];
+      i1Wof[3] = in1_off + i1mem[3];
 
-      mul[0] = i1mem[0]*i2mem[0] +i1mem[1]*i2mem[2];
-      mul[1] = i1mem[0]*i2mem[1] +i1mem[1]*i2mem[3];
-      mul[2] = i1mem[2]*i2mem[0] +i1mem[3]*i2mem[2];
-      mul[3] = i1mem[2]*i2mem[1] +i1mem[3]*i2mem[3];
+      i2Wof[0] = in2_off + i2mem[0];
+      i2Wof[1] = in2_off + i2mem[1];
+      i2Wof[2] = in2_off + i2mem[2];
+      i2Wof[3] = in2_off + i2mem[3];
+      
 
-      d.data = Clamp_Combine(mul[0], mul[1], mul[2], mul[3], qa_max, qa_min);
+      mul[0] = i1Wof[0]*i2Wof[0] ;
+      mul[1] = i1Wof[1]*i2Wof[1] ;
+      mul[2] = i1Wof[2]*i2Wof[2] ;
+      mul[3] = i1Wof[3]*i2Wof[3] ;
+
+      f_out[0] = Quantised_Multiplier(mul[0], out1_mul, out1_sv) + out1_off;
+      f_out[1] = Quantised_Multiplier(mul[1], out1_mul, out1_sv) + out1_off;
+      f_out[2] = Quantised_Multiplier(mul[2], out1_mul, out1_sv) + out1_off;
+      f_out[3] = Quantised_Multiplier(mul[3], out1_mul, out1_sv) + out1_off;
+
+      d.data = Clamp_Combine(f_out[0], f_out[1], f_out[2], f_out[3], qa_max, qa_min);
 
       cout << "d.data= " << d.data << endl;
       

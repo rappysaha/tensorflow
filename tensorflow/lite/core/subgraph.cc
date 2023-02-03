@@ -1177,6 +1177,35 @@ TfLiteStatus Subgraph::Invoke() {
                            "failed to invoke");
     }
 
+
+      // TF_LITE_ENSURE_OK(&context_, GetInputSafe(&context_, &node, 0,
+      // &input));
+      //  TF_LITE_ENSURE_OK(&context_, GetInputSafe(&context_, &node,
+      // 1, &filter));
+           
+      // TfLiteTensor* output;
+      // TF_LITE_ENSURE_OK(&context_, GetOutputSafe(&context_, &node, 0,
+      // &output));
+
+      // {
+      //   int rows = output->dims->data[3];
+      //   int cols = output->dims->data[1] * output->dims->data[2] * output->dims->data[0];
+      //   ofstream myfile;
+      //   // myfile.open("aData/" + mname + mo + "/out_" +
+      //   //             std::to_string(node_index) + ".csv");
+      //     myfile.open("aData/out_cor_" + std::to_string(node_index) + "_1.csv");
+      //   int8_t* res_pointer = output->data.int8;
+      //   int index = 0;
+      //   for (int c = 0; c < cols; c++) {
+      //     myfile << endl;
+      //     for (int r = 0; r < rows; r++) {
+      //       myfile << (int)res_pointer[index] << ",";
+      //       index++;
+      //     }
+      //   }
+      //   myfile.close();
+      // }
+
     // Force execution prep for downstream ops if the latest op triggered the
     // resize of a dynamic tensor.
     if (tensor_resized_since_op_invoke_ &&
