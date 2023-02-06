@@ -4,6 +4,9 @@
 #include <iostream>
 #include <utility>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include "accelerator/driver/mult_driver.h"
 #include "tensorflow/lite/delegates/utils/toy_mult_accelerator/sim_delegate/toy_mult_delegate.h"
 #include "tensorflow/lite/delegates/utils/toy_mult_accelerator/sim_delegate/util.h"
@@ -228,11 +231,34 @@ class ToyMultDelegateKernel : public SimpleDelegateKernelInterface {
 
       tflite_toymultsim::Entry(drv);
 
-      // mkdir("aData", 0777);
-      // ofstream myfile;
-      // myfile.open("aData/out_sa_" + std::to_string(drv.t.layer) + "_1.csv");
+      mkdir("aData", 0777);
+      ofstream myfile;
+      myfile.open("aData/out_ToyMULT.csv");
+      // int8_t* input1_pointer = drv.input_A;
+      // int8_t* input2_pointer = drv.input_A;
       // int8_t* res_pointer = drv.output_C;
       // int index = 0;
+      myfile << "input1_data:" << endl << "[[";
+      for (int r = 0; r < 4; r++) {
+        if(r==2) myfile << "],[";
+        myfile << (int)input1_data[r] << ",";
+      }
+      myfile << "]]" << endl;
+
+      myfile << "input2_data:" << endl << "[[";
+      for (int r = 0; r < 4; r++) {
+        if(r==2) myfile << "],[";
+        myfile << (int)input2_data[r] << ",";
+      }
+      myfile << "]]" << endl;
+
+      myfile << "output_data:" << endl << "[[";
+      for (int r = 0; r < 4; r++) {
+        if(r==2) myfile << "],[";
+        myfile << (int)output_data[r] << ",";
+      }
+      myfile << "]]" << endl;
+
       // for (int c = 0; c < cols; c++) {
       //   myfile << endl;
       //   for (int r = 0; r < rows; r++) {
@@ -240,7 +266,7 @@ class ToyMultDelegateKernel : public SimpleDelegateKernelInterface {
       //     index++;
       //   }
       // }
-      // myfile.close();
+      myfile.close();
 
       dparams.layer++;
       dparams.delegated_nodes--;

@@ -28,6 +28,13 @@ limitations under the License.
 #include <utility>
 #include <vector>
 
+//#rpp change
+#if 0
+#include <fstream>      // for ofstream
+#include <sys/types.h>  // for mkdir
+#include <sys/stat.h>   // for mkdir
+#endif
+//end
 #include "tensorflow/lite/allocation.h"
 #include "tensorflow/lite/builtin_ops.h"
 #include "tensorflow/lite/c/c_api_types.h"
@@ -1177,7 +1184,37 @@ TfLiteStatus Subgraph::Invoke() {
                            "failed to invoke");
     }
 
+//#rpp change
+#if 0
+    TfLiteTensor* input1_data = &tensors_[0];
+    TfLiteTensor* input2_data = &tensors_[1];
+    TfLiteTensor* output_data = &tensors_[2];
+    mkdir("aData", 0777);
+    std::ofstream myfile;
+    myfile.open("aData/out_ToyMULTCPU.csv");
+    myfile << "input1_data:" << std::endl << "[[";
+    for (int r = 0; r < 4; r++) {
+      if (r == 2) myfile << "],[";
+      myfile << (int)input1_data->data.int8[r] << ",";
+    }
+    myfile << "]]" << std::endl;
 
+    myfile << "input2_data:" << std::endl << "[[";
+    for (int r = 0; r < 4; r++) {
+      if (r == 2) myfile << "],[";
+      myfile << (int)input2_data->data.int8[r] << ",";
+    }
+    myfile << "]]" << std::endl;
+
+    myfile << "output_data:" << std::endl << "[[";
+    for (int r = 0; r < 4; r++) {
+      if (r == 2) myfile << "],[";
+      myfile << (int)output_data->data.int8[r] << ",";
+    }
+    myfile << "]]" << std::endl;
+    myfile.close();
+#endif
+// end
       // TF_LITE_ENSURE_OK(&context_, GetInputSafe(&context_, &node, 0,
       // &input));
       //  TF_LITE_ENSURE_OK(&context_, GetInputSafe(&context_, &node,
