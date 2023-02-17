@@ -1,10 +1,11 @@
 #ifndef ACC_CONTAINER
 #define ACC_CONTAINER
 
-
 #include <vector>
+
 #include "../acc.h"
 #include "systemc_binding.h"
+#include "tensorflow/lite/delegates/utils/bert_sim_delegate/bert_sim_debug.h"
 #include "tensorflow/lite/delegates/utils/secda_tflite/axi_support/axi_api_v2.h"
 #include "tensorflow/lite/delegates/utils/secda_tflite/threading_utils/utils.h"
 
@@ -48,11 +49,23 @@ struct acc_container {
 };
 void precal_sum_load_pad(int8_t* data, int width, int depth, int8_t* shape_data,
                          vector<int>& sums) {
-  int w = ((width + 16 - 1) - ((width + 16 - 1) % 16));
-  int d = ((depth + 16 - 1) - ((depth + 16 - 1) % 16));
-  int max = width * depth;
+  int w = ((width + 16 - 1) - ((width + 16 - 1) % 16)); // same as roundUp(width, 16);
+  int d = ((depth + 16 - 1) - ((depth + 16 - 1) % 16)); // same as roundUp(depth, 16);
+  int max = width * depth;// not needed
   int dm = roundDown(depth, 16);
   int i_c = 0;
+#ifdef DEBUG_ACCCONTAINER
+  mkdir("aData/Debug", 0777);
+  myfile.open("aData/Debug/DEBUG_FCDRIVER.csv", ios::app); 
+  myfile<< "precal_sum_load_pad():" << endl;
+
+  myfile<< "width = " << width << "  w= " << w << endl;
+  myfile<< "depth = " << depth << "  d= " << d << endl;
+
+  myfile << endl;
+  myfile.close();
+#endif
+
   for (int i = 0; i < w; i++) {
     int s0 = 0;
     if (i < width) {
@@ -102,10 +115,21 @@ void precal_sum_load_pad(int8_t* data, int width, int depth, int8_t* shape_data,
 }
 
 void store_unpad(int8_t* data, int width, int depth, int8_t* shape_data) {
-  int w = ((width + 16 - 1) - ((width + 16 - 1) % 16));
-  int d = ((depth + 16 - 1) - ((depth + 16 - 1) % 16));
+  int w = ((width + 16 - 1) - ((width + 16 - 1) % 16)); // same as roundUp(width, 16);
+  int d = ((depth + 16 - 1) - ((depth + 16 - 1) % 16)); // same as roundUp(depth, 16);
   int dm = roundDown(depth, 16);
   int i_c = 0;
+#ifdef DEBUG_ACCCONTAINER
+  mkdir("aData/Debug", 0777);
+  myfile.open("aData/Debug/DEBUG_FCDRIVER.csv", ios::app); 
+  myfile<< "store_unpad():" << endl;
+
+  myfile<< "width = " << width << "  w= " << w << endl;
+  myfile<< "depth = " << depth << "  d= " << d << endl;
+
+  myfile << endl;
+  myfile.close();
+#endif
   for (int i = 0; i < width; i++) {
 #ifndef ACC_NEON
     for (int j = 0; j < depth; j++) {
@@ -131,19 +155,31 @@ void create_2d_biases(int sn, int N_dim, int sm, int M_dim, int32_t* new_bias,
                       int32_t* bias, int32_t* wt_sum, int* in_sum,
                       int32_t rhs_offset, int32_t lhs_offset, int32_t depth) {
   int offdepth = 0;
+  int m, n;
+
   if (-lhs_offset && -rhs_offset)
     offdepth = (-lhs_offset) * depth * (-rhs_offset);
-  for (int m = 0; m < M_dim; m++) {
-    for (int n = 0; n < N_dim; n++) {
+  for (m = 0; m < M_dim; m++) {
+    for (n = 0; n < N_dim; n++) {
       int yt = (in_sum[sn + n] * lhs_offset) + offdepth;
       int xt = bias[sm + m] + (wt_sum[sm + m] * rhs_offset);
       new_bias[m * N_dim + n] = yt + xt;
-      if ((m == 0 && n == 6) || (m == 6 && n == 0)) {
-        int k = new_bias[m * N_dim + n];
-        int b = 0;
-      }
+      // if ((m == 0 && n == 6) || (m == 6 && n == 0)) {
+      //   int k = new_bias[m * N_dim + n];
+      //   int b = 0;
+      // }
     }
   }
+#ifdef DEBUG_ACCCONTAINER
+  mkdir("aData/Debug", 0777);
+  myfile.open("aData/Debug/DEBUG_FCDRIVER.csv", ios::app); 
+  myfile << "create_2d_biases():" << endl;
+  myfile << "depth= " << (int)depth << " offdepth = (-lhs_offset) * depth * (-rhs_offset)= " << offdepth << endl;
+  
+  myfile << "???? what is the function create_2d_biases() ????" << endl << endl;
+  
+  myfile.close();
+#endif
 }
 
 #endif  // ACC_CONTAINER

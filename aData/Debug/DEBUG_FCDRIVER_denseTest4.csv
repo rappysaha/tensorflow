@@ -1,0 +1,53 @@
+n -- input matrix no of rows=1 Padded input matrix row no=16
+m -- weight matrix no of rows=2 Padded weight matrix row no=16
+k -- input/weight matrix no of cols=147840 Padded input/weight matrix col no/common dimension=147840
+Ouput Quatization params------drv.crx -- output_shift=-13  drv.crf -- output multiplier=1300748543  drv.ra--output_offset=-124
+drv.rhs_offset--input_offset=-128
+drv.lhs_offset--weights_offset=0
+Entering Entry():
+Debugging BlockFC():
+inp_max= 131072
+wgt_max= 262144
+acc_max= 16384
+k_inc,m_inc,n_inc is making input and weight matrix dimension divisible by 16
+k_inc= 147840
+m_inc= 16
+n_inc= 16
+after while condition m_inc= 16
+after while condition n_inc= 16
+!!!!!! send drv data that received from tensor to the drv scs i.e. to the accelerator !!!!!
+drv.start_count= 1
+Entering create_2d_biases()
+create_2d_biases():
+depth= 147840 offdepth = (-lhs_offset) * depth * (-rhs_offset)= 0
+???? what is the function create_2d_biases() ????
+
+k_b = 147840
+m_b = 16
+n_b = 16
+No of instruction = 8
+
+createWeightLoad():
+doffset= 0
+dstride= 18480
+x_size= 18480
+y_size= 16
+
+createInputLoad():
+doffset= 0
+dstride= 18480
+x_size= 18480
+y_size= 16
+
+createBiasLoad():
+doffset= 0
+dstride= 8
+x_size= 8
+y_size= 16
+
+createCompute():
+doffset= 0
+dstride= 4
+x_size= 16
+y_size= 16
+

@@ -4,6 +4,7 @@
 #include <systemc.h>
 #include "tensorflow/lite/delegates/utils/secda_tflite/sysc_profiler/profiler.h"
 #include "tensorflow/lite/delegates/utils/secda_tflite/ap_sysc/AXI4_if.h"
+// #include "accelerator_debug.h"
 
 #include <iostream>
 using namespace std;
@@ -33,11 +34,11 @@ typedef unsigned long long acc_bt;
 typedef sc_int<8> dat_t;
 typedef sc_int<32> acc_t;
 
-#define INP_ACCESS 8
+#define INP_ACCESS 8 // why 8 here
 #define WGT_ACCESS 8
 #define ACC_ACCESS 2
 
-#define INP_MEMS 4
+#define INP_MEMS 4 // why 4 here
 #define WGT_MEMS 4
 #define ACC_MEMS 1
 
@@ -50,14 +51,14 @@ typedef sc_int<32> acc_t;
 #define ACC_SIZE (ACC_DEPTH * ACC_ACCESS * ACC_MEMS)
 
 #define SC_INP_ELEM_BYTES_RATIO 4
-#define MAX8 127
-#define MIN8 -128
-#define MAX32 2147483647
-#define MIN32 -2147483648
+#define MAX8 127 // (2^7 - 1)
+#define MIN8 -128 // -2^7
+#define MAX32 2147483647 // (2^31 - 1)
+#define MIN32 -2147483648 // -2^31
 
-#define DIVMAX 2147483648
-#define POS 1073741824
-#define NEG -1073741823
+#define DIVMAX 2147483648 // 2^31
+#define POS 1073741824 // 2^30
+#define NEG -1073741823 // -(2^30 - 1)
 
 struct opcode {
   unsigned long long p1;
@@ -109,16 +110,25 @@ SC_MODULE(ACCNAME) {
   AXI4M_bus_port<unsigned long long> bias_port;
   AXI4M_bus_port<unsigned int> out_port;
 
-  // Instantiate memories
+  // Instantiate memories 
+  // rpp where do we store this array in FPGA?
+  // rpp instantiate using BRAM
+  // rpp weight memory
   wgt_bt* wgt_mem1 = new wgt_bt[WGT_DEPTH];
   wgt_bt* wgt_mem2 = new wgt_bt[WGT_DEPTH];
   wgt_bt* wgt_mem3 = new wgt_bt[WGT_DEPTH];
   wgt_bt* wgt_mem4 = new wgt_bt[WGT_DEPTH];
+
+  // rpp input memory 
   inp_bt* inp_mem1 = new inp_bt[INP_DEPTH];
   inp_bt* inp_mem2 = new inp_bt[INP_DEPTH];
   inp_bt* inp_mem3 = new inp_bt[INP_DEPTH];
   inp_bt* inp_mem4 = new inp_bt[INP_DEPTH];
+
+  // rpp bias memory or accumulation memory
   acc_bt* acc_mem = new acc_bt[ACC_DEPTH];
+
+  //
   out_bt out_mem[4][4];
 
 #ifndef __SYNTHESIS__

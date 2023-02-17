@@ -1,0 +1,89 @@
+n -- input matrix no of rows=20 Padded input matrix row no=32
+m -- weight matrix no of rows=68 Padded weight matrix row no=80
+k -- input/weight matrix no of cols=40 Padded input/weight matrix col no/common dimension=48
+Ouput Quatization params------drv.crx -- output_shift=-9  drv.crf -- output multiplier=1547146225  drv.ra--output_offset=-128
+drv.rhs_offset--input_offset=-128
+drv.lhs_offset--weights_offset=0
+precal_sum_load_pad():
+width = 20  w= 32
+depth = 40  d= 48
+
+precal_sum_load_pad():
+width = 68  w= 80
+depth = 40  d= 48
+
+Entering Entry():
+
+Debugging BlockFC():
+inp_max= 131072
+wgt_max= 262144
+acc_max= 16384
+k_inc,m_inc,n_inc is making input and weight matrix dimension divisible by 16
+k_inc= 48
+m_inc= 80
+n_inc= 32
+after while condition m_inc= 80
+after while condition n_inc= 32
+!!!!!! send drv data that received from tensor to the drv scs i.e. to the accelerator !!!!!
+drv.start_count= 1
+Entering create_2d_biases()
+create_2d_biases():
+depth= 40 offdepth = (-lhs_offset) * depth * (-rhs_offset)= 0
+???? what is the function create_2d_biases() ????
+
+k_b = 48
+m_b = 80
+n_b = 32
+No of instruction = 8
+
+createWeightLoad():
+doffset= 0
+dstride= 6
+x_size= 6
+y_size= 80
+
+createInputLoad():
+doffset= 0
+dstride= 6
+x_size= 6
+y_size= 32
+
+createBiasLoad():
+doffset= 0
+dstride= 16
+x_size= 16
+y_size= 80
+
+createCompute():
+doffset= 0
+dstride= 20
+x_size= 80
+y_size= 32
+
+fetch():
+insn_len= 4  insn_idx= 0 ins_count->value= 4
+Loading weight .....
+load_weights():
+Loading all weights from Accelerator accessible DRAM to 4 BRAM. Each Global Weight BRAM Depth= 8192 No. of elems
+no of weights = load_length*m_inc*8 = 3840
+load_length = wgt_insn.x_size = weight col size/8= 6   we are dividing here by 8 because each address of BRAM data will contain 8byte of weight due to the unsigned long long
+m_inc = wgt_insn.y_size = weight col size= 80
+Physical memory address of DRAM. mem_base= 0
+dstride= wgt_insn.dstride = increment of the DRAM memory, weight row size/86
+mem_idx1= mem_idx= wgt_insn.doffset = 0
+mem_idx2= mem_idx + dstride * 1= 6
+mem_idx3= mem_idx + dstride * 2= 12
+mem_idx4= mem_idx + dstride * 3= 18
+dstride_jump= dstride * 4 = 24
+Loading weight Finished!!!
+
+Loading input .....
+Loading input Finished!!!
+
+Loading bias .....
+Loading bias Finished!!!
+
+!!!!!! send drv data that received from tensor to the drv scs i.e. to the accelerator !!!!!
+!!!!!! Start Accelerator Simulation !!!!!
+!!!!!! drv.profile->saveProfile(drv.acc->profiling_vars); !!!!!
+!!!!!! Retrive Output data from  MMapped DMA buffer !!!!!

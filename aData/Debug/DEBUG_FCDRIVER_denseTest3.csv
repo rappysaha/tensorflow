@@ -1,0 +1,25 @@
+n -- input matrix no of rows=1 Padded input matrix row no=16
+m -- weight matrix no of rows=2 Padded weight matrix row no=16
+k -- input/weight matrix no of cols=4 Padded input/weight matrix col no/common dimension=16
+Ouput Quatization params------drv.crx -- output_shift=-8  drv.crf -- output multiplier=1752426622  drv.ra--output_offset=-41
+drv.rhs_offset--input_offset=-128
+drv.lhs_offset--weights_offset=0
+Entering Entry():
+Debugging BlockFC():
+inp_max= 131072
+wgt_max= 262144
+acc_max= 16384
+k_inc= 16
+m_inc= 16
+n_inc= 16
+after while condition m_inc= 16
+after while condition n_inc= 16
+Entering create_2d_biases()
+create_2d_biases():
+depth= 4 offdepth = (-lhs_offset) * depth * (-rhs_offset)= 0
+???? what is the function create_2d_biases() ????
+
+k_b = 16
+m_b = 16
+n_b = 16
+No of instruction = 8

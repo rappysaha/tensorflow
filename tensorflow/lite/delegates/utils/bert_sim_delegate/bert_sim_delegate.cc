@@ -1,19 +1,23 @@
 
 #include "tensorflow/lite/delegates/utils/bert_sim_delegate/bert_sim_delegate.h"
+
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include <fstream>
 #include <iostream>
 #include <utility>
 
 #include "accelerator/driver/fc_driver.h"
 #include "tensorflow/lite/delegates/utils/bert_sim_delegate/util.h"
-#include "tensorflow/lite/delegates/utils/simple_delegate.h"
-#include "tensorflow/lite/kernels/internal/quantization_util.h"
-#include "tensorflow/lite/kernels/kernel_util.h"
-
 #include "tensorflow/lite/delegates/utils/secda_tflite/sysc_integrator/systemc_integrate.h"
 #include "tensorflow/lite/delegates/utils/secda_tflite/sysc_profiler/profiler.h"
 #include "tensorflow/lite/delegates/utils/secda_tflite/threading_utils/acc_helpers.h"
 #include "tensorflow/lite/delegates/utils/secda_tflite/threading_utils/utils.h"
+#include "tensorflow/lite/delegates/utils/simple_delegate.h"
+#include "tensorflow/lite/kernels/internal/quantization_util.h"
+#include "tensorflow/lite/kernels/kernel_util.h"
+#include "tensorflow/lite/delegates/utils/bert_sim_delegate/bert_sim_debug.h"
 
 // Some variables needs to be defined across multiple instances of the delegate
 ACCNAME* acc;
@@ -236,13 +240,34 @@ class BertSimDelegateKernel : public SimpleDelegateKernelInterface {
       const int batches = output_shape.Dims(0);
       const int accum_depth = filter_shape.Dims(filter_dim_count - 1);
 
-      int N = batches;
-      int M = output_depth;
-      int K = accum_depth;
-      int rfactor = 16;
+      int N = batches;       // input matrix no of rows
+      int M = output_depth;  // weight matrix no of rows
+      int K = accum_depth;   // input/weight matrix no of cols
+      int rfactor = 16;      // why rfactor is needed
       int pN = roundUp(N, rfactor);
       int pM = roundUp(M, rfactor);
       int pK = roundUp(K, rfactor);
+
+#ifdef DEBUG_BERTSIMDELEGATE
+      mkdir("aData/Debug", 0777);
+      myfile.open("aData/Debug/DEBUG_FCDRIVER.csv");
+      
+      myfile << "n -- input matrix no of rows=" << N
+             << " Padded input matrix row no=" << pN << endl;
+      myfile << "m -- weight matrix no of rows=" << M
+             << " Padded weight matrix row no=" << pM << endl;
+      myfile << "k -- input/weight matrix no of cols=" << K
+             << " Padded input/weight matrix col no/common dimension=" << pK
+             << endl;
+      myfile << "Ouput Quatization params------"
+             << "drv.crx -- output_shift=" << output_shift
+             << "  drv.crf -- output multiplier=" << output_multiplier
+             << "  drv.ra--output_offset=" << output_offset << endl;
+
+      myfile << "drv.rhs_offset--input_offset=" << (int)rhs_offset << endl;
+      myfile << "drv.lhs_offset--weights_offset=" << (int)lhs_offset << endl;
+      myfile.close();
+#endif
 
       std::vector<int> in_sum;
       std::vector<int> wt_sum;
@@ -288,20 +313,54 @@ class BertSimDelegateKernel : public SimpleDelegateKernelInterface {
 
       // Calls the fc_driver to offload the FC operation
       drv.start_count = dparams.start_count;
+#ifdef DEBUG_BERTSIMDELEGATE
+      myfile.open("aData/Debug/DEBUG_FCDRIVER.csv",
+              ios::app);
+
+      myfile << "Entering Entry():" << endl << endl;
+      myfile.close();
+#endif
       tflite_bertsim::Entry(drv);
       dparams.start_count = drv.start_count;
 
       // Calls the fc_driver unpack/unpad result to TFLite tensor
       store_unpad(padded_output, N, M, output_data);
       if (!isBias) delete[] drv.bias;
+#if 0
+      mkdir("aData", 0777);
+      ofstream myfile;
+      myfile.open("aData/out_Dense.csv");
 
+      myfile << "input_data:" << endl << "[[";
+      for (int r = 0; r < 4; r++) {
+        // if(r==2) myfile << "],[";
+        myfile << (int)input_data[r] << ",";
+      }
+      myfile << "]]" << endl;
+
+      myfile << "filter_data:" << endl << "[[";
+      for (int r = 0; r < filter_rows*filter_cols; r++) {
+        if(r==filter_cols) myfile << "],[";
+        myfile << (int)filter_data[r] << ",";
+      }
+      myfile << "]]" << endl;
+
+      myfile << "output_data:" << endl << "[[";
+      for (int r = 0; r < 2; r++) {
+        // if(r==2) myfile << "],[";
+        myfile << (int)output_data[r] << ",";
+      }
+      myfile << "]]" << endl;
+
+      myfile.close();
+#endif
       dparams.layer++;
       dparams.delegated_nodes--;
     }
 
     // Saves profilier records once all delegated nodes are executed
     if (dparams.delegated_nodes == 0) {
-      profile->saveCSVRecords("outputs/bert_sim");
+      profile->saveCSVRecords("bert_sim");
     }
     return kTfLiteOk;
   }

@@ -11,7 +11,7 @@ void ACCNAME::scheduler() {
     int M = wgt_block;
     for (int n = 0; n < N; n += 4) {
       for (int m = 0; m < M; m += 4) {
-        if (m == 4 && n == 0) {
+        if (m == 4 && n == 0) { // rpp no use
           int k = 0;
         }
 

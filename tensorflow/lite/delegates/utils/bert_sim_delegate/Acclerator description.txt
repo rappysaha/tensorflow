@@ -1,0 +1,124 @@
+FC accelerator can be described as two matrix multiplication and summation with another matrix
+
+
+input_matrix  = inpMat = inpR x inpC
+weight_matrix = wgtMat = wgtR x wgtC
+bias_matrix   = bisMat = 1    x bisC // bias is one dimension matrix
+
+usually row of the input_matrix should be the equal of the colum of the weight_matrix. So multiplication
+takes place row of the input_matrix and column of the weight matrix. TF lite model store the weight matrix
+in transpose form therefore multiplication takes place row of the input_matrix and row of the weight matrix.
+
+inpC == wgtC == dpth
+bisC == wgtR 
+
+So now we multiply row of the input_matrix and row of the weight matrix.
+
+inpMat = inpR x dpth
+wgtMat = wgtR x dpth
+bisMat = 1    x wgtR
+
+AccOutR = 4
+AccOutC = 4
+Output tile size AccOutR x AccOutC
+
+Data tiling size = 16 = DataTiLeSz, this is the reason input and weight each dimension should be multiple
+of DataTiLeSz.
+
+no of macs = AccOutR x AccOutC x DataTiLeSz= 4 x 4 x 16 =256
+
+inpMat = inpR x dpth = 20x40 = 32x48 // making each dimension divisible by DataTiLeSz 
+wgtMat = wgtR x dpth = 68x40 = 80x48 // making each dimension divisible by DataTiLeSz
+bisMat = 1    x wgtR =  1x68 =  1x80 // making each dimension divisible by DataTiLeSz
+
+Each element is 8bit of data == 1byte.
+MemDataTypeSize = 8 = unisigned long long = 64 bit = 8 byte
+
+-- all the input matrix, weight matrix and bias is in the tensor memory space that is controlled by OS
+1. TensorInpMem
+2. TensorWgtMem
+3. TensorBisMem
+
+-- we copy all of data from tensor memory space to another memmory mapped Dram space that can be accessed 
+by accelerator in a chunk of manner.
+1. MmapInpMem
+2. MmapWgtMem
+3. MmapBisMem
+
+-- We copy each chunk of memory mapped data from Dram to the Global BRAM in each computation cycle
+1. GBrmInpMem
+2. GBrmWgtMem
+3. GBrmBisMem
+
+We are copying inpMat and wgtMat data, TensorInpMem --> MmapInpMem and TensorWgtMem --> MmapWgtMem. 
+No of elements should be divided by Divfactor2 since each adress will have 8byte of data.
+
+first 8 element of first row copied into first address. it will take 6 address to copy 48 elements.
+it will take 32x6 = 192 address. -- inpMat
+it will take 80x6 = 480 address. -- wgtMat
+// skip the understanding 2d bias buffer for now
+
+MmapInpMem --> GBrmInpMem and MmapWgtMem --> GBrmWgtMem
+
+NoGBrmInpMem   = 4 = AccOutR
+NoGBrmWgtMem   = 4 = AccOutC
+GBrmInpMemDpth = 4096
+GBrmWgtMemDpth = 8192
+
+SzGBrmInpMem = NoGBrmInpMem * MemDataTypeSize * GBrmInpMemDpth = 4 * 8 * 4096 = 131072 bytes/no of elements
+SzGBrmWgtMem = NoGBrmWgtMem * MemDataTypeSize * GBrmWgtMemDpth = 4 * 8 * 8192 = 262144 bytes/no of elements
+
+Here we want to have minimum 4 row of input data into 4 GBrmInpMem and minimum 4 row of weight data into 4 
+GBrmWgtMem becuse of output tile size 4x4 and we are not sending any partial sum to the dram. 
+
+each SzGBrmWgtMem = MemDataTypeSize * GBrmWgtMemDpth = 8 * 8192 = 65536 bytes/no of elems
+each SzGBrmInpMem = MemDataTypeSize * GBrmInpMemDpth = 8 * 4096 = 32768 bytes/no of elems
+
+inpC == wgtC == dpth <= each SzGBrmInpMem
+
+
+inpMat = 32 x 48 = 1536 < SzGBrmInpMem && dpth == 48 < each SzGBrmInpMem
+
+we will copy 4 row of input data into 4 GBrmInpMem sequentially. Therefore,
+NoOfRowEachInpBram = inpR/NoGBrmInpMem = 32/4 = 8 rows
+
+Similarly, wgtMat = 80x48 = 3840 < SzGBrmWgtMem && dpth == 48 < each SzGBrmInpMem
+
+we will copy 4 row of weight data into 4 GBrmWgtMem sequentially. Therefore,
+NoOfRowEachWgtBram = wgtR/NoGBrmInpMem = 80/4 = 20 rows
+
+Now, loop for 4 input row x 4 wgt row multiplication
+
+
+loop will continue until we cover full lenght of each row,
+MulLoopLim = dpth/DataTiLeSz
+start of loop:
+
+from 4 GBrmInpMem, we are taking data of DataTiLeSz from each inp row. in[DataTiLeSz][NoGBrmInpMem]
+from 4 GBrmWgtMem, we are taking data of DataTiLeSz from each wgt row. we[DataTiLeSz][NoGBrmWgtMem]
+
+Product,    prod[NoGBrmWgtMem][NoGBrmInpMem][DataTiLeSz] = in[DataTiLeSz][NoGBrmInpMem] * 
+                                                           we[DataTiLeSz][NoGBrmWgtMem]
+Accumulate1, od[NoGBrmWgtMem][NoGBrmInpMem][DataTiLeSz] += prod[NoGBrmWgtMem][NoGBrmInpMem]
+                                                          [DataTiLeSz]
+
+end of loop.
+
+After that we will accumulate in DataTiLeSz dimension, add bias and requantization offset
+acc[NoGBrmWgtMem][NoGBrmInpMem], buffer both have bias and quatization
+
+start of loop:
+    //accumulate in DataTiLeSz dimension
+    od_val += od[NoGBrmWgtMem][NoGBrmInpMem][DataTiLeSz]; 
+    //add bias and requantization offset
+    out_mem[NoGBrmWgtMem][NoGBrmInpMem] = od_val + acc[NoGBrmWgtMem][NoGBrmInpMem]
+end of loop.
+
+after this we will send the 4x4 output to be requantized and store in the dram. 
+
+
+-- for the sake of simplicity, we assume, we have enough dram Space but limited Bram memory. 
+-- How can we determine, how much data we can put in each chunk?
+-- what should be the size of each Global Bram? 
+
+

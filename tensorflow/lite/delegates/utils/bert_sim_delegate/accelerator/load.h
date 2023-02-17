@@ -1,5 +1,16 @@
 #include "acc.h"
 
+#include <fstream>
+#include <utility>
+
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#define DEBUG_LOAD
+
+ofstream myfileLoad;
+
+
 void ACCNAME::load_weights() {
   wait();
   while (true) {
@@ -17,6 +28,41 @@ void ACCNAME::load_weights() {
     sc_uint<32> mem_idx2 = mem_idx + dstride * 1;
     sc_uint<32> mem_idx3 = mem_idx + dstride * 2;
     sc_uint<32> mem_idx4 = mem_idx + dstride * 3;
+
+#ifdef DEBUG_LOAD
+  mkdir("aData/Debug", 0777);
+  myfileLoad.open("aData/Debug/DEBUG_FCDRIVER.csv",
+              ios::app);
+
+  myfileLoad << "load_weights():" << endl;
+  myfileLoad << "Loading all weights from Accelerator accessible DRAM to 4 "
+                "BRAM. Each Global Weight BRAM Depth= "
+             << (int)WGT_DEPTH << " No. of elems" << endl;
+  myfileLoad << "no of weights = load_length*m_inc*8 = "
+             << (int)((int)m_inc * (int)load_length * 8) << endl;
+  myfileLoad
+      << "load_length = wgt_insn.x_size = weight col size/8= "
+      << (int)load_length
+      << "   we are dividing here by 8 because each address of BRAM data will "
+         "contain 8byte of weight due to the unsigned long long"
+      << endl;
+  myfileLoad << "m_inc = wgt_insn.y_size = weight col size= " << (int)m_inc
+             << endl;
+  myfileLoad << "Physical memory address of DRAM. mem_base= " << mem_base
+             << endl;
+  myfileLoad << "dstride= wgt_insn.dstride = increment of the DRAM memory, "
+                "weight row size/8"
+             << (int)dstride << endl;
+  myfileLoad << "mem_idx1= mem_idx= wgt_insn.doffset = " << (int)mem_idx1
+             << endl;
+  myfileLoad << "mem_idx2= mem_idx + dstride * 1= " << (int)mem_idx2 << endl;
+  myfileLoad << "mem_idx3= mem_idx + dstride * 2= " << (int)mem_idx3 << endl;
+  myfileLoad << "mem_idx4= mem_idx + dstride * 3= " << (int)mem_idx4 << endl;
+
+  myfileLoad << "dstride_jump= dstride * 4 = " << (int)dstride_jump << endl;
+  myfileLoad.close();
+
+#endif
 
     for (int i = 0; i < m_inc / 4; i++) {
       weight_port->burst_read(mem_base + mem_idx1, load_length,

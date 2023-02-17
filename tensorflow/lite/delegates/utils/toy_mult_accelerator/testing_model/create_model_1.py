@@ -21,7 +21,8 @@ class MyModel2(tf.keras.Model):
   def call(self, inputs):
     return self.dense1(inputs)
 
-x=4
+x=224*220*3
+
 
 model = tf.keras.models.Sequential()
 model.add(tf.keras.Input(shape=(x,)))
@@ -48,5 +49,5 @@ converter.inference_input_type = tf.int8  # or tf.uint8
 converter.inference_output_type = tf.int8  # or tf.uint8
 tflite_model = converter.convert()
 
-with open(mdir+'denseTest3.tflite', 'wb') as f:
+with open(mdir+'denseTest4.tflite', 'wb') as f:
     f.write(tflite_model)

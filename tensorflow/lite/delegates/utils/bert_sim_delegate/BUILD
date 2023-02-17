@@ -14,6 +14,7 @@ cc_library(
         "bert_sim_delegate.cc",
     ],
     hdrs = [
+        "bert_sim_debug.h",
         "bert_sim_delegate.h",
         "util.h",
     ],

@@ -1,4 +1,13 @@
 #include "acc.h"
+#include <fstream>
+#include <utility>
+
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#define DEBUG_FETCH
+
+ofstream myfileFetch;
 
 void ACCNAME::fetch() {
   int start_count = 0;
@@ -8,6 +17,14 @@ void ACCNAME::fetch() {
   crx_val = 0;
   ra_val = 0;
 
+#ifdef DEBUG_FETCH
+  mkdir("aData/Debug", 0777);
+  myfileFetch.open("aData/Debug/DEBUG_FCDRIVER.csv",
+              ios::app); 
+
+  myfileFetch << "fetch():" << endl;
+
+#endif
   opcode insn(0, 0);
   wait();
   while (true) {
@@ -36,6 +53,11 @@ void ACCNAME::fetch() {
       int insn_len = insn_count.read();
       int insn_idx = 0;
       ins_count->value +=insn_len;
+#ifdef DEBUG_FETCH
+      myfileFetch << "insn_len= " << insn_len << "  insn_idx= " << insn_idx << " ins_count->value= " << (int)ins_count->value << endl;
+      
+      // myfileFetch.close();
+#endif
       for (int pc = 0; pc < insn_len; pc++) {
         sc_uint<64> in2 = insn_port.read(insn_addr + insn_idx);
         sc_uint<64> in1 = insn_port.read(insn_addr + insn_idx + 1);
@@ -50,8 +72,14 @@ void ACCNAME::fetch() {
           wgt_insn2 = in2;
           loading.write(true);
           wgt_load.write(true);
+#ifdef DEBUG_FETCH
+          myfileFetch << "Loading weight ....." << endl;
+#endif
           DWAIT();
           while (wgt_load.read()) wait();
+#ifdef DEBUG_FETCH
+          myfileFetch << "Loading weight Finished!!!" << endl << endl;
+#endif
           loading.write(false);
           DWAIT();
 
@@ -60,8 +88,14 @@ void ACCNAME::fetch() {
           inp_insn2 = in2;
           loading.write(true);
           inp_load.write(true);
+#ifdef DEBUG_FETCH
+          myfileFetch << "Loading input ....." << endl;
+#endif
           DWAIT();
           while (inp_load.read()) wait();
+#ifdef DEBUG_FETCH
+          myfileFetch << "Loading input Finished!!!" << endl << endl;
+#endif
           loading.write(false);
           DWAIT();
         } else if (insn.op == 3) {
@@ -69,8 +103,15 @@ void ACCNAME::fetch() {
           bias_insn2 = in2;
           loading.write(true);
           bias_load.write(true);
+#ifdef DEBUG_FETCH
+          myfileFetch << "Loading bias ....." << endl;
+#endif
           DWAIT();
           while (bias_load.read()) wait();
+#ifdef DEBUG_FETCH
+          myfileFetch << "Loading bias Finished!!!" << endl << endl;
+          myfileFetch.close();
+#endif
           loading.write(false);
           DWAIT();
         } else {

@@ -1,6 +1,7 @@
 #include "acc.h"
 
-sc_int<32> ACCNAME::mul_s8(sc_int<8> a, sc_int<8> b) {
+// rpp - indicates the implementation in LUT rather than DSP due to the HLS pragma
+sc_int<32> ACCNAME::mul_s8(sc_int<8> a, sc_int<8> b) { 
   sc_int<32> c;
 #pragma HLS RESOURCE variable = c core = Mul
   c = a * b;
@@ -8,9 +9,10 @@ sc_int<32> ACCNAME::mul_s8(sc_int<8> a, sc_int<8> b) {
 }
 
 void ACCNAME::compute() {
-  int acc[4][4];
-  dat_t in[16][4];
-  dat_t we[16][4];
+  int acc[4][4];   // rpp- accumulating buffer both have bias and quatization
+                   // offset data. [4][4] comes from output tile size.
+  dat_t in[16][4]; // rpp- 16 byte of data from 4 rows
+  dat_t we[16][4]; // rpp- 16 byte of data from 4 rows
   sc_int<64> wgt8x[8];
   sc_int<64> inp8x[8];
   int od[4][4][16];
@@ -30,9 +32,17 @@ void ACCNAME::compute() {
     int ii = ip * d / 4;
     int N = inp_block / 2;
 
+/**
+ * rpp
+ * We are uploading the bias from the bias/accumulation array to new two dimentional array 
+ * Q: why do we need two dimensional array?
+ * Q: where does it map in the FPGA? Another BRAM?
+*/
     for (int n = 0; n < 4; n++) {
       for (int m = 0; m < 2; m++) {
-        int acc_idx = (n * N) + (wp * N) + m + (ip / 2);
+        // rpp- do not understand the line clearly
+        // it is calculating the bias memory offset but how?
+        int acc_idx = (n * N) + (wp * N) + m + (ip / 2); 
         sc_int<64> acc2x = acc_mem[acc_idx];
         acc[n][m * 2] = acc2x.range(31, 0);
         acc[n][m * 2 + 1] = acc2x.range(63, 32);
@@ -61,26 +71,33 @@ void ACCNAME::compute() {
         od[n][m][15] = 0;
       }
     }
+// this is the loop for 4 input row x 4 wgt row multiplication 
+// d = now of elems in each row/8 
+// from 4 input bram memory we are taking 16 elems of each inp row
+// rin +=2 bcause each address of Bram contains 8byte of data
+// wgt8x[0] and wgt8x[5] are taking 16 elems of first  
 
     for (int rin = 0; rin < d; rin += 2) {
 #pragma HLS pipeline II = 1
-      wgt8x[0] = wgt_mem1[rin + wi];
-      wgt8x[1] = wgt_mem2[rin + wi];
-      wgt8x[2] = wgt_mem3[rin + wi];
-      wgt8x[3] = wgt_mem4[rin + wi];
-      wgt8x[4] = wgt_mem1[rin + wi + 1];
-      wgt8x[5] = wgt_mem2[rin + wi + 1];
-      wgt8x[6] = wgt_mem3[rin + wi + 1];
-      wgt8x[7] = wgt_mem4[rin + wi + 1];
+      wgt8x[0] = wgt_mem1[rin + wi]; // 1st row 8 elems
+      wgt8x[1] = wgt_mem2[rin + wi]; // 2nd row 8 elems
+      wgt8x[2] = wgt_mem3[rin + wi]; // 3rd row 8 elems
+      wgt8x[3] = wgt_mem4[rin + wi]; // 4th row 8 elems
+      wgt8x[4] = wgt_mem1[rin + wi + 1]; // 1st row 8 elems
+      wgt8x[5] = wgt_mem2[rin + wi + 1]; // 2nd row 8 elems
+      wgt8x[6] = wgt_mem3[rin + wi + 1]; // 3rd row 8 elems 
+      wgt8x[7] = wgt_mem4[rin + wi + 1]; // 4th row 8 elems
 
-      inp8x[0] = inp_mem1[rin + ii];
-      inp8x[1] = inp_mem2[rin + ii];
-      inp8x[2] = inp_mem3[rin + ii];
-      inp8x[3] = inp_mem4[rin + ii];
-      inp8x[4] = inp_mem1[rin + ii + 1];
-      inp8x[5] = inp_mem2[rin + ii + 1];
-      inp8x[6] = inp_mem3[rin + ii + 1];
-      inp8x[7] = inp_mem4[rin + ii + 1];
+      inp8x[0] = inp_mem1[rin + ii]; // 1st row 8 elems
+      inp8x[1] = inp_mem2[rin + ii]; // 2nd row 8 elems
+      inp8x[2] = inp_mem3[rin + ii]; // 3rd row 8 elems
+      inp8x[3] = inp_mem4[rin + ii]; // 4th row 8 elems
+      inp8x[4] = inp_mem1[rin + ii + 1]; // 1st row 8 elems
+      inp8x[5] = inp_mem2[rin + ii + 1]; // 2nd row 8 elems
+      inp8x[6] = inp_mem3[rin + ii + 1]; // 3rd row 8 elems
+      inp8x[7] = inp_mem4[rin + ii + 1]; // 4th row 8 elems
+
+// for each row we are now distribuiting 16 elems in 16 register
 
       for (int i = 0; i < 4; i++) {
 #pragma HLS unroll
@@ -119,7 +136,9 @@ void ACCNAME::compute() {
         we[15][i] = wgt8x[i + 4].range(63, 56);
       }
 
-      for (int m = 0; m < 4; m++) {
+// 16 multiply operations happens and for 16 output location
+
+      for (int m = 0; m < 4; m++) { // keeping weight fixed
 #pragma HLS unroll
         for (int n = 0; n < 4; n++) {
 #pragma HLS unroll
@@ -141,10 +160,14 @@ void ACCNAME::compute() {
           prod[m][n][15] = mul_s8(in[15][n], we[15][m]);
 
           // Profile number of Macs
-          macs->value+=256;
+          macs->value+=256; // rpp - it should be 16 right?
         }
       }
 
+// add operation along the row
+// ideally all the value in prod array 3rd should be added and 
+// put in one element
+// here we are keeping the 16 elems until we finish the full row
       for (int m = 0; m < 4; m++) {
 #pragma HLS unroll
         for (int n = 0; n < 4; n++) {
@@ -156,10 +179,16 @@ void ACCNAME::compute() {
         }
       }
     }
-    while (storing.read()) wait();
+    while (storing.read()) wait(); // what we are doing here ??
 
     m_off.write(wp);
     n_off.write(ip);
+
+// add all the multiplied value add it and place it 4x4 array of 
+// ouput tile. At the same time we add 2d array of bias matrix 
+// where we have bias and quantization offset that is required for 
+// requantization step.
+
     for (int n = 0; n < 4; n++) {
 #pragma HLS pipeline II = 1
       for (int m = 0; m < 4; m++) {
